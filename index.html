@@ -199,7 +199,7 @@ this.bookings.push(booking);
 try{
 fetch("https://script.google.com/macros/s/AKfycbzBZFoisNFu58oaKk8-nd6TDS2JvydX1kS4UH-m2ktgA09wsgDhosFqGttOa82bjsk-YQ/exec",{
 method:"POST",
-headers:{"Content-Type":"application/json"},
+mode:"no-cors",
 body:JSON.stringify(booking)
 });
 }catch(e){
