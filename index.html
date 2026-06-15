@@ -102,11 +102,21 @@ gallery:[
 "https://images.unsplash.com/photo-1523413651479-597eb2da0ad6?q=80&w=1200"
 ],
 admin:{login:"admin",password:"admin"},
-bookings:JSON.parse(localStorage.getItem("bookings")||"[]"),
+bookings:[],
+apiUrl:"https://script.google.com/macros/s/AKfycbzBZFoisNFu58oaKk8-nd6TDS2JvydX1kS4UH-m2ktgA09wsgDhosFqGttOa82bjsk-YQ/exec",
 
-save(){
-localStorage.setItem("bookings",JSON.stringify(this.bookings));
+save(){},
+
+async loadBookings(){
+try{
+const r=await fetch(this.apiUrl);
+this.bookings=await r.json();
+}catch(e){
+console.error(e);
+this.bookings=[];
+}
 },
+
 
 slots(day){
 return day===6?["10-12","12-14","15-17","17-19"]:(day>0&&day<6?["16-18"]:[]);
@@ -194,7 +204,7 @@ alert("Podaj imię i nazwisko oraz telefon.");
 return;
 }
 
-this.bookings.push(booking);
+
 
 try{
 fetch("https://script.google.com/macros/s/AKfycbzBZFoisNFu58oaKk8-nd6TDS2JvydX1kS4UH-m2ktgA09wsgDhosFqGttOa82bjsk-YQ/exec",{
@@ -206,9 +216,13 @@ body:JSON.stringify(booking)
 console.log(e);
 }
 
-this.save();
+
+setTimeout(async()=>{
+await this.loadBookings();
 this.closeModal();
 this.refresh();
+alert("Rezerwacja zapisana.");
+},1500);
 },
 
 changeStatus(id,status){
@@ -243,9 +257,10 @@ this.renderReport();
 this.renderStats();
 },
 
-init(){
+async init(){
 this.renderServices();
 this.renderGallery();
+await this.loadBookings();
 this.refresh();
 
 saveBtn.onclick=()=>this.addBooking();
