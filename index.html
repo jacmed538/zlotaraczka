@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Złota Rączka z Osiedla</title>
+<style>
+:root{
+--bg:#f3f4f6;--card:#fff;--dark:#1f2937;--green:#16a34a;--yellow:#eab308;--red:#dc2626;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,sans-serif;background:var(--bg)}
+header{background:var(--dark);color:#fff;padding:30px;text-align:center}
+.hero{background:var(--green);color:#fff;padding:20px;text-align:center;font-size:1.2rem}
+.section{background:var(--card);margin:15px;padding:20px;border-radius:12px}
+.grid{display:grid;gap:12px}
+.services,.gallery,.calendar{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+.card{border:1px solid #ddd;padding:12px;border-radius:10px}
+.gallery img{width:100%;height:180px;object-fit:cover;border-radius:10px}
+.day{padding:12px;border-radius:10px;color:#fff}
+.free{background:#f8fafc;color:#111}
+.partial{background:#f8fafc;color:#111}
+.busy{background:#f8fafc;color:#111}
+button{padding:8px 12px;border:none;border-radius:8px;background:var(--dark);color:#fff;cursor:pointer}
+input,textarea,select{width:100%;padding:10px;margin:5px 0}
+.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);align-items:center;justify-content:center}
+.modal-content{background:#fff;padding:20px;border-radius:12px;width:90%;max-width:550px}
+table{width:100%;border-collapse:collapse}
+td,th{border:1px solid #ddd;padding:6px}
+.hidden{display:none}
+</style>
+</head>
+<body>
+
+<header>
+<h1>Złota Rączka z Osiedla</h1>
+<p><a href="tel:536058214" style="font-size:34px;color:#facc15;text-decoration:none">📞 536 058 214</a></p>
+</header>
+
+<div class="hero">80 zł/h + 30 zł dojazd</div>
+
+<section class="section">
+<h2>Usługi</h2>
+<div class="grid services" id="services"></div>
+</section>
+
+<section class="section">
+<h2>Galeria realizacji</h2>
+<div class="grid gallery" id="gallery"></div>
+</section>
+
+<section class="section">
+<h2>Kalendarz</h2>
+<div class="grid calendar" id="calendar"></div>
+</section>
+
+
+
+<section class="section">
+<h2>Logowanie</h2>
+<input id="login" placeholder="Login">
+<input id="password" type="password" placeholder="Hasło">
+<button id="adminToggle">Zaloguj</button>
+
+<div id="adminPanel" class="hidden">
+<button id="exportBtn">Eksport JSON</button>
+<input type="file" id="importBtn">
+
+<table>
+<thead>
+<tr><th>Data</th><th>Godzina</th><th>Klient</th><th>Adres</th><th>Status</th></tr>
+</thead>
+<tbody id="report"></tbody>
+</table>
+</div>
+</section>
+
+<div class="modal" id="modal">
+<div class="modal-content">
+<h3>Nowa rezerwacja</h3>
+<input id="date" readonly>
+<input id="slot" readonly>
+<input id="name" placeholder="Imię i nazwisko">
+<input id="phone" placeholder="Telefon">
+<input id="address" placeholder="Adres">
+<textarea id="desc" placeholder="Opis"></textarea>
+<button id="saveBtn">Zapisz</button>
+<button onclick="App.closeModal()">Anuluj</button>
+</div>
+</div>
+
+<script>
+const App={
+services:[
+"Wymiana kranu","Naprawa spłuczki","Montaż lamp","Skręcanie mebli IKEA",
+"Malowanie ścian","Malowanie sufitów","Wieszanie szafek","Wiercenie otworów"
+],
+gallery:[
+"https://images.unsplash.com/photo-1621905252507-b35492cc74b4?q=80&w=1200",
+"https://images.unsplash.com/photo-1581578731548-c64695cc6952?q=80&w=1200",
+"https://images.unsplash.com/photo-1504307651254-35680f356dfd?q=80&w=1200",
+"https://images.unsplash.com/photo-1523413651479-597eb2da0ad6?q=80&w=1200"
+],
+admin:{login:"admin",password:"admin"},
+bookings:JSON.parse(localStorage.getItem("bookings")||"[]"),
+
+save(){
+localStorage.setItem("bookings",JSON.stringify(this.bookings));
+},
+
+slots(day){
+return day===6?["10-12","12-14","15-17","17-19"]:(day>0&&day<6?["16-18"]:[]);
+},
+
+renderServices(){
+services.innerHTML=this.services.map(s=>`<div class="card">${s}</div>`).join("");
+},
+
+renderGallery(){
+gallery.innerHTML=this.gallery.map(i=>`<img src="${i}">`).join("");
+},
+
+renderCalendar(){
+calendar.innerHTML="";
+for(let i=0;i<30;i++){
+const d=new Date();
+d.setDate(d.getDate()+i);
+if(d.getDay()===0) continue;
+
+const date=d.toISOString().split("T")[0];
+const weekday=["Niedziela","Poniedziałek","Wtorek","Środa","Czwartek","Piątek","Sobota"][d.getDay()];
+const total=this.slots(d.getDay()).length;
+const used=this.bookings.filter(x=>x.date===date).length;
+
+const cls=used===0?"free":used>=total?"busy":"partial";
+
+const box=document.createElement("div");
+box.className=`day ${cls}`;
+
+box.innerHTML=`<b>${weekday}</b><br><small>${date}</small>`+this.slots(d.getDay()).map(slot=>{
+const busy=this.bookings.some(x=>x.date===date&&x.slot===slot);
+return busy
+?`<div><button disabled style="background:#dc2626;color:#fff">Zajęty ${slot}</button></div>`
+:`<div><button style="background:#16a34a;color:#fff" onclick="App.openModal('${date}','${slot}')">Rezerwuj ${slot}</button></div>`;
+}).join("");
+
+calendar.appendChild(box);
+}
+},
+
+renderReport(){
+report.innerHTML=this.bookings.map(b=>`
+<tr>
+<td>${b.date}</td>
+<td>${b.slot}</td>
+<td>${b.name}</td>
+<td>${b.address||""}</td>
+<td>
+<select onchange="App.changeStatus('${b.id}',this.value)">
+<option ${b.status==="Nowe"?"selected":""}>Nowe</option>
+<option ${b.status==="W realizacji"?"selected":""}>W realizacji</option>
+<option ${b.status==="Wykonane"?"selected":""}>Wykonane</option>
+</select>
+</td>
+</tr>`).join("");
+},
+
+renderStats(){},
+
+openModal(dateValue,slotValue){
+modal.style.display="flex";
+date.value=dateValue;
+slot.value=slotValue;
+},
+
+closeModal(){
+modal.style.display="none";
+},
+
+addBooking(){
+const booking={
+id:crypto.randomUUID(),
+date:document.getElementById("date").value,
+slot:document.getElementById("slot").value,
+name:document.getElementById("name").value.trim(),
+phone:document.getElementById("phone").value.trim(),
+address:document.getElementById("address").value.trim(),
+desc:document.getElementById("desc").value.trim(),
+status:"Nowe"
+};
+
+if(!booking.name || !booking.phone){
+alert("Podaj imię i nazwisko oraz telefon.");
+return;
+}
+
+this.bookings.push(booking);
+
+try{
+fetch("https://script.google.com/macros/s/AKfycbzBZFoisNFu58oaKk8-nd6TDS2JvydX1kS4UH-m2ktgA09wsgDhosFqGttOa82bjsk-YQ/exec",{
+method:"POST",
+headers:{"Content-Type":"application/json"},
+body:JSON.stringify(booking)
+});
+}catch(e){
+console.log(e);
+}
+
+this.save();
+this.closeModal();
+this.refresh();
+},
+
+changeStatus(id,status){
+const item=this.bookings.find(x=>x.id===id);
+if(!item) return;
+item.status=status;
+this.save();
+this.refresh();
+},
+
+export(){
+const blob=new Blob([JSON.stringify(this.bookings,null,2)],{type:"application/json"});
+const a=document.createElement("a");
+a.href=URL.createObjectURL(blob);
+a.download="bookings.json";
+a.click();
+},
+
+import(file){
+const r=new FileReader();
+r.onload=e=>{
+this.bookings=JSON.parse(e.target.result);
+this.save();
+this.refresh();
+};
+r.readAsText(file);
+},
+
+refresh(){
+this.renderCalendar();
+this.renderReport();
+this.renderStats();
+},
+
+init(){
+this.renderServices();
+this.renderGallery();
+this.refresh();
+
+saveBtn.onclick=()=>this.addBooking();
+exportBtn.onclick=()=>this.export();
+
+importBtn.onchange=e=>{
+if(e.target.files[0]) this.import(e.target.files[0]);
+};
+
+
+adminToggle.onclick=()=>{
+const user=document.getElementById("login").value.trim();
+const pass=document.getElementById("password").value.trim();
+
+if(user===this.admin.login && pass===this.admin.password){
+adminPanel.classList.toggle("hidden");
+adminToggle.textContent=adminPanel.classList.contains("hidden")
+?"Zaloguj":"Wyloguj";
+}else{
+alert("Nieprawidłowy login lub hasło");
+}
+};
+}
+};
+
+App.init();
+</script>
+</body>
+</html>
