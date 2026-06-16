@@ -109,7 +109,7 @@ save(){},
 
 async loadBookings(){
 try{
-const r=await fetch(this.apiUrl);
+const r=await fetch(this.apiUrl+"?t="+Date.now(),{cache:"no-store"});
 this.bookings=await r.json();
 }catch(e){
 console.error(e);
@@ -263,7 +263,15 @@ this.renderGallery();
 await this.loadBookings();
 this.refresh();
 
-saveBtn.onclick=()=>this.addBooking();
+saveBtn.onclick=()=>{
+saveBtn.disabled=true;
+saveBtn.textContent="Zapisywanie...";
+App.addBooking();
+setTimeout(()=>{
+saveBtn.disabled=false;
+saveBtn.textContent="Zapisz";
+},2000);
+};
 exportBtn.onclick=()=>this.export();
 
 importBtn.onchange=e=>{
@@ -287,6 +295,11 @@ alert("Nieprawidłowy login lub hasło");
 };
 
 App.init();
+
+setInterval(async()=>{
+ await App.loadBookings();
+ App.refresh();
+},30000);
 </script>
 </body>
 </html>
